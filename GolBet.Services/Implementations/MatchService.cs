@@ -1,6 +1,4 @@
-﻿// GolBet.Services/Implementations/MatchService.cs 
-
-using AutoMapper;
+﻿using AutoMapper;
 using GolBet.Entities;
 using GolBet.Entities.Enums;
 using GolBet.Repositories.Interfaces;
@@ -11,33 +9,30 @@ using GolBet.Services.Interfaces;
 namespace GolBet.Services.Implementations;
 
 public class MatchService : IMatchService
-
 {
     private readonly IMatchRepository _matchRepository;
     private readonly IMapper _mapper;
-    public MatchService(IMatchRepository matchRepository, IMapper mapper)
 
+    public MatchService(IMatchRepository matchRepository, IMapper mapper)
     {
         _matchRepository = matchRepository;
         _mapper = mapper;
     }
 
-    public async Task<IEnumerable<MatchDto>> GetBoardAsync(MatchStatus? status = null)
-
+    // Recibimos y propagamos el parámetro search al repositorio
+    public async Task<IEnumerable<MatchDto>> GetBoardAsync(MatchStatus? status = null, string? search = null)
     {
-        var matches = await _matchRepository.GetAllWithTeamsAsync(status);
+        var matches = await _matchRepository.GetAllWithTeamsAsync(status, search);
         return _mapper.Map<IEnumerable<MatchDto>>(matches);
     }
 
     public async Task<MatchDetailDto?> GetDetailAsync(int id)
-
     {
         var match = await _matchRepository.GetByIdWithDetailsAsync(id);
         return match is null ? null : _mapper.Map<MatchDetailDto>(match);
     }
 
     public async Task<MatchFormDto?> GetForEditAsync(int id)
-
     {
         var match = await _matchRepository.GetByIdAsync(id);
         if (match is null) return null;
@@ -46,19 +41,15 @@ public class MatchService : IMatchService
         return dto;
     }
 
-
     public async Task CreateAsync(MatchFormDto dto)
-
     {
         ValidateBusinessRules(dto);
         var match = _mapper.Map<Match>(dto);
         match.Date = dto.Date.ToUtcFromColombia();   // local (form) -> UTC (DB) 
         await _matchRepository.AddAsync(match);
-
     }
 
     public async Task UpdateAsync(MatchFormDto dto)
-
     {
         ValidateBusinessRules(dto);
         var match = await _matchRepository.GetByIdAsync(dto.Id)
@@ -74,7 +65,6 @@ public class MatchService : IMatchService
     // ---- Business rules (Guía, regla #1 y afines) ---- 
 
     private static void ValidateBusinessRules(MatchFormDto dto)
-
     {
         if (dto.HomeTeamId == dto.AwayTeamId)
             throw new InvalidOperationException(
@@ -83,6 +73,5 @@ public class MatchService : IMatchService
         if (dto.Date.ToUtcFromColombia() <= DateTime.UtcNow)
             throw new InvalidOperationException(
                 "La fecha del partido debe ser futura.");
-
     }
 }

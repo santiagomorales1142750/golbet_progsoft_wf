@@ -1,15 +1,14 @@
-﻿// GolBet.Web/Controllers/MatchesController.cs  (versión completa) 
-
-using GolBet.Entities.Enums;
+﻿using GolBet.Entities.Enums;
+using GolBet.Repositories.Data;
 using GolBet.Services.DTOs;
 using GolBet.Services.Interfaces;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 
 namespace GolBet.Web.Controllers;
 
 public class MatchesController : Controller
-
 {
     private readonly IMatchService _matchService;
     private readonly ITeamService _teamService;
@@ -22,33 +21,35 @@ public class MatchesController : Controller
 
     // GET /Matches            -> all matches 
     // GET /Matches?status=Scheduled -> filtered board 
-    public async Task<IActionResult> Index(MatchStatus? status)
-
+    // Agregamos el parámetro search al Model Binding
+    public async Task<IActionResult> Index(MatchStatus? status, string? search)
     {
         ViewBag.CurrentStatus = status;
-        var board = await _matchService.GetBoardAsync(status);
+        ViewBag.CurrentSearch = search; // Guardamos la búsqueda para la vista
+
+        var board = await _matchService.GetBoardAsync(status, search);
         return View(board);
     }
 
     // GET /Matches/Detail/3 
     public async Task<IActionResult> Detail(int id)
-
     {
         var match = await _matchService.GetDetailAsync(id);
         if (match is null) return NotFound();   // HTTP 404 
         return View(match);
     }
 
+    [Authorize(Roles = DbSeeder.AdminRole)]
     // GET /Matches/Create 
-
     public async Task<IActionResult> Create()
     {
         await LoadTeamsAsync();
         return View(new MatchFormDto());
     }
 
-
+    [Authorize(Roles = DbSeeder.AdminRole)]
     [HttpPost, ValidateAntiForgeryToken]
+
     public async Task<IActionResult> Create(MatchFormDto dto)
     {
         if (!ModelState.IsValid)
@@ -56,7 +57,6 @@ public class MatchesController : Controller
             await LoadTeamsAsync();
             return View(dto);
         }
-
 
         try
         {
@@ -72,6 +72,7 @@ public class MatchesController : Controller
         }
     }
 
+    [Authorize(Roles = DbSeeder.AdminRole)]
     // GET /Matches/Edit/5 
     public async Task<IActionResult> Edit(int id)
     {
@@ -81,6 +82,7 @@ public class MatchesController : Controller
         return View(dto);
     }
 
+    [Authorize(Roles = DbSeeder.AdminRole)]
     // POST /Matches/Edit 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(MatchFormDto dto)
@@ -97,7 +99,6 @@ public class MatchesController : Controller
             TempData["Success"] = "Partido actualizado correctamente.";
             return RedirectToAction(nameof(Index));
         }
-
         catch (InvalidOperationException ex)      // business rule violated 
         {
             ModelState.AddModelError(string.Empty, ex.Message);
@@ -106,6 +107,7 @@ public class MatchesController : Controller
         }
     }
 
+    [Authorize(Roles = DbSeeder.AdminRole)]
     // POST /Matches/Deactivate/5 
     [HttpPost, ValidateAntiForgeryToken]
     public async Task<IActionResult> Deactivate(int id)

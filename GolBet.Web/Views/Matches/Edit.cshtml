@@ -1,14 +1,10 @@
 ﻿@* Views/Matches/Edit.cshtml *@ 
-@model GolBet.Services.DTOs.MatchFormDto
+@model GolBet.Services.DTOs.MatchFormDto 
+@{ ViewData["Title"] = "Editar partido"; } 
 
-@{
-    ViewData["Title"] = "Editar partido";
-}
- 
+<h2 class="mb-4">Editar partido</h2> 
+<partial name="_MatchForm" model="Model" /> 
 
-<h2 class="mb-4">Editar partido</h2>
-<partial name="_MatchForm" model="Model" />  
-
-@section Scripts {
-    <partial name="_ValidationScriptsPartial" />
-}
+@section Scripts { 
+    <partial name="_ValidationScriptsPartial" /> 
+} 
