@@ -7,38 +7,38 @@ using GolBet.Repositories.Interfaces;
 using GolBet.Services.DTOs;
 using GolBet.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Extensions.Logging;
 
 namespace GolBet.Services.Implementations;
 
 public class BetService : IBetService
-
 {
     private readonly IBetRepository _betRepository;
     private readonly IMatchRepository _matchRepository;
     private readonly UserManager<AppUser> _userManager;
     private readonly IMapper _mapper;
+    private readonly ILogger<BetService> _logger;
 
     public BetService(
         IBetRepository betRepository,
         IMatchRepository matchRepository,
         UserManager<AppUser> userManager,
-        IMapper mapper)
-
+        IMapper mapper,
+        ILogger<BetService> logger)
     {
         _betRepository = betRepository;
         _matchRepository = matchRepository;
         _userManager = userManager;
         _mapper = mapper;
+        _logger = logger;
     }
 
     public async Task PlaceBetAsync(string userId, BetFormDto dto)
-
     {
         // Rule #1: the match must exist, be Scheduled, and lie in the future 
         var match = await _matchRepository.GetByIdAsync(dto.MatchId);
         if (match is null || !match.IsActive)
             throw new InvalidOperationException("El partido no existe.");
-
 
         if (match.Status != MatchStatus.Scheduled || match.Date <= DateTime.UtcNow)
             throw new InvalidOperationException(
@@ -59,7 +59,6 @@ public class BetService : IBetService
 
         // Rule #4: freeze the odds of the chosen pick 
         var oddsAtPlacement = dto.Pick switch
-
         {
             BetPick.Home => match.HomeOdds,
             BetPick.Draw => match.DrawOdds,
@@ -73,7 +72,6 @@ public class BetService : IBetService
         // ...and record the bet. ONE SaveChanges -> ONE transaction: 
         // the tracked user update and the new bet travel together. 
         var bet = new Bet
-
         {
             MatchId = dto.MatchId,
             UserId = userId,
@@ -84,6 +82,11 @@ public class BetService : IBetService
         };
 
         await _betRepository.AddAsync(bet);   // SaveChangesAsync happens here 
+
+        _logger.LogInformation(
+            "Bet placed: user {UserId} bet {Amount} on {Pick} " +
+            "for match {MatchId} at odds {Odds}",
+            userId, dto.Amount, dto.Pick, dto.MatchId, oddsAtPlacement);
     }
 
     public async Task<IEnumerable<BetDto>> GetMyBetsAsync(string userId)
